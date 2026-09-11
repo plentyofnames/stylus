@@ -112,6 +112,34 @@ select option { background: #2b1055; }
 .param input[type="range"] { width: 100%; }
 .param select { width: 100%; }
 
+/* ---- sub-groups inside a panel ---- */
+.group { margin-bottom: 16px; }
+.group:last-child { margin-bottom: 0; }
+.group-title {
+  font-size: 0.72em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.65;
+  margin: 2px 0 8px;
+}
+.param-tag {                       /* small caption under a parameter name */
+  display: block;
+  font-size: 0.68em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+  margin-top: 2px;
+}
+details.extra > summary {
+  cursor: pointer;
+  font-size: 0.85em;
+  opacity: 0.8;
+  margin: 12px 0 10px;
+  user-select: none;
+}
+details.extra > summary:hover { opacity: 1; }
+
 /* ---- range slider styling ---- */
 input[type="range"] {
   -webkit-appearance: none; appearance: none;

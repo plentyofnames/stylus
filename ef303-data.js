@@ -105,6 +105,22 @@ const EF303 = (() => {
     rng(28, 'OSC Wave'),
     rng(29, 'Filter Curve')
   ];
+  // The same block, split the way the UI presents it.
+  const SYNTH_GROUPS = [
+    { title: 'Amp Envelope',                  params: SYNTH_BLOCK.slice(0, 6) },
+    { title: 'Filter Envelope',               params: SYNTH_BLOCK.slice(6, 12) },
+    { title: 'Oscillator, LFO & Portamento',  params: SYNTH_BLOCK.slice(12) }
+  ];
+  const SYNTH_OFFSETS = new Set(SYNTH_BLOCK.map(p => p.off));
+
+  // Front-panel knob that drives each of the four main effect parameters
+  // (prm1-4), in the order they sit on the panel (p.9 / p.70).
+  const PANEL_KNOBS = [
+    { off: 2, label: 'RATE/LOW' },
+    { off: 3, label: 'CUTOFF/MID' },
+    { off: 4, label: 'RESO/HIGH' },
+    { off: 1, label: 'EFFECT BAL' }
+  ];
 
   // ---- The 16 Multi-FX types and their parameters (p.76-77) ------------------
   const EFFECTS = [
@@ -166,16 +182,26 @@ const EF303 = (() => {
   // ---- Global / system parameters within a patch (pp.73-74) ------------------
   // Master Tempo spans two bytes (H 0x43, L 0x44): tempo = (H*128 + L) / 10,
   // range 40.0-240.0 BPM. Handled specially in app.js.
-  const GLOBAL = [
-    enm(0x42, 'Ctrl Select No', ENUM.CTRL_SELECT),
-    rng(0x45, 'Slider Range Min'),
-    rng(0x46, 'Slider Range Max'),
+  // Which physical knob the [CTRL SEL] button has selected for the step
+  // modulator / slider to act on.
+  const CTRL_SELECT = enm(0x42, 'Ctrl Select', ENUM.CTRL_SELECT);
+  // The two panel buttons next to the knobs: [SYNC TYPE] (called "Sync Note"
+  // in the SysEx map) and [BPM SYNC].
+  const SYNC = [
+    enm(0x4a, 'Sync Type', ENUM.NOTE_RES),
+    enm(0x4b, 'BPM Sync', ENUM.ON_OFF)
+  ];
+  // Keyboard / scale settings that only matter for the synth algorithms
+  // (System settings, pp.52-53; stored per patch).
+  const KEYBOARD = [
     enm(0x47, 'Synth Key', ENUM.SYNTH_KEY),
     enm(0x48, 'Slider Scale', ENUM.SLIDER_SCALE),
     enm(0x49, 'Key Scale Active', ENUM.ON_OFF),
-    enm(0x4a, 'Sync Note', ENUM.NOTE_RES),
-    enm(0x4b, 'BPM Sync', ENUM.ON_OFF)
+    rng(0x45, 'Slider Range Min'),
+    rng(0x46, 'Slider Range Max')
   ];
+  // Everything above, flat, for offset lookups.
+  const GLOBAL = [CTRL_SELECT, ...KEYBOARD, ...SYNC];
 
   // C1..C8 assignable controllers: each has a target (0=OFF, 1-40 = MFX Param),
   // a CC number (2-95) and an output routing mode.
@@ -190,18 +216,24 @@ const EF303 = (() => {
   }
 
   // ---- Step modulator (16-step sequencer, pp.74-75) --------------------------
+  const SM_PLAYBACK = [
+    enm(0x4d, 'Play Mode', ENUM.PLAY_MODE),
+    enm(0x4e, 'Direction', ENUM.DIRECTION),
+    rng(0x4f, 'End Step', { min: 0, max: 15, disp: v => String(v + 1) }), // shown 1-16
+    enm(0x50, 'Step Time', ENUM.NOTE_RES),
+    enm(0x51, 'Smooth', ENUM.ON_OFF)
+  ];
+  const SM_ROUTING = [
+    enm(0x4c, 'Destination', ENUM.SM_DEST),
+    CTRL_SELECT,
+    enm(0x52, 'Out Message', ENUM.SM_OUT_MSG),
+    ccs(0x53, 'CC Assign'),                        // slider "S-n": CC sent when Out Message = CONTROL CHANGE
+    enm(0x54, 'Output Mode', ENUM.OUTPUT_MODE)     // slider destination: INT / EXT / BOTH
+  ];
   const STEPMOD = {
-    config: [
-      enm(0x4c, 'Destination', ENUM.SM_DEST),
-      enm(0x4d, 'Play Mode', ENUM.PLAY_MODE),
-      enm(0x4e, 'Direction', ENUM.DIRECTION),
-      rng(0x4f, 'End Step', { min: 0, max: 15, disp: v => String(v + 1) }), // shown 1-16
-      enm(0x50, 'Step Time', ENUM.NOTE_RES),
-      enm(0x51, 'Smooth', ENUM.ON_OFF),
-      enm(0x52, 'Out Message', ENUM.SM_OUT_MSG),
-      ccs(0x53, 'CC Assign'),                        // CC number sent when Out Message = CONTROL CHANGE
-      enm(0x54, 'Output Mode', ENUM.OUTPUT_MODE)
-    ],
+    playback: SM_PLAYBACK,
+    routing: SM_ROUTING,
+    config: [...SM_PLAYBACK, ...SM_ROUTING],      // flat, for offset lookups
     // Per-step arrays, 16 steps each.
     // Bases are INTEGER offsets (hi*128 + lo), kept contiguous on purpose.
     gateBase:     0x56, // S1..S16 Gate Time   (0-105 %)   addr 00 56..00 65
@@ -211,6 +243,7 @@ const EF303 = (() => {
   };
 
   return { SYSEX, ADDR, ENUM, EFFECTS, GLOBAL, KNOBS, STEPMOD, VALID_CC,
+           SYNTH_GROUPS, SYNTH_OFFSETS, PANEL_KNOBS, CTRL_SELECT, SYNC, KEYBOARD,
            // expose builders for any UI-side needs
            _rng: rng, _enm: enm, _cc: ccs };
 })();

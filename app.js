@@ -358,77 +358,142 @@ function controlFor(def, value, onChange) {
   return wrap;
 }
 
-function renderEffectParams() {
-  const eff = EF303.EFFECTS[currentEffectId];
-  const grid = $('effectParams');
-  grid.innerHTML = '';
-  eff.params.forEach(def => {
-    grid.append(controlFor(def, patch[def.off], v => writeParam(def.off, v)));
-  });
-  $('effectBadge').textContent = (eff.synth ? '🎹 ' : '') + eff.name;
+/* ---- layout helpers ---- */
+
+// A titled sub-group containing a param grid of `nodes`.
+function group(title, nodes, gridClass = 'param-grid') {
+  const g = document.createElement('div');
+  g.className = 'group';
+  if (title) {
+    const h = document.createElement('div');
+    h.className = 'group-title';
+    h.textContent = title;
+    g.append(h);
+  }
+  const grid = document.createElement('div');
+  grid.className = gridClass;
+  grid.append(...nodes);
+  g.append(grid);
+  return g;
 }
 
-function renderGlobal() {
-  const grid = $('globalParams');
+// Standard control bound to a patch offset.
+function paramControl(def) {
+  return controlFor(def, patch[def.off], v => writeParam(def.off, v));
+}
+
+// Add a small caption (e.g. the panel knob name) under a control's name.
+function tagControl(node, text) {
+  const tag = document.createElement('span');
+  tag.className = 'param-tag';
+  tag.textContent = text;
+  node.querySelector('.param-name').append(tag);
+  return node;
+}
+
+/* ---- Effect: laid out like the front panel ---- */
+function renderEffectParams() {
+  const eff = EF303.EFFECTS[currentEffectId];
+  const root = $('effectParams');
+  root.innerHTML = '';
+  const byOff = Object.fromEntries(eff.params.map(p => [p.off, p]));
+
+  // The four knobs, in panel order (prm2, prm3, prm4, prm1).
+  const knobs = EF303.PANEL_KNOBS
+    .filter(k => byOff[k.off])
+    .map(k => tagControl(paramControl(byOff[k.off]), k.label));
+  root.append(group('Knobs', knobs));
+
+  // Buttons beside the knobs: FREQ RANGE (prm32, or its per-effect stand-in),
+  // SYNC TYPE and BPM SYNC. Plus any extra effect parameter (prm6 / prm7)
+  // that has no knob of its own.
+  const buttonOffs = new Set(EF303.PANEL_KNOBS.map(k => k.off));
+  const extras = eff.params.filter(p => !buttonOffs.has(p.off) && !EF303.SYNTH_OFFSETS.has(p.off));
+  const buttons = [
+    ...extras.map(p => tagControl(paramControl(p), p.off === 32 ? 'FREQ RANGE' : 'extra parameter')),
+    ...EF303.SYNC.map(p => tagControl(paramControl(p), p.name.toUpperCase()))
+  ];
+  root.append(group('Buttons', buttons));
+
+  $('effectBadge').textContent = (eff.synth ? '🎹 ' : '') + eff.name;
+  renderSynth(eff);
+}
+
+/* ---- Synth: only for Syn+Dly / Syn Bass ---- */
+function renderSynth(eff) {
+  const section = $('synthSection');
+  const root = $('synthParams');
+  root.innerHTML = '';
+  section.hidden = !eff.synth;
+  if (!eff.synth) return;
+  EF303.SYNTH_GROUPS.forEach(g => root.append(group(g.title, g.params.map(paramControl))));
+  root.append(group('Keyboard & Scale', EF303.KEYBOARD.map(paramControl)));
+}
+
+/* ---- Tempo ---- */
+function renderTempo() {
+  const grid = $('tempoParams');
   grid.innerHTML = '';
 
   // Master Tempo (special 2-byte fixed-point).
-  const tempoWrap = document.createElement('div');
-  tempoWrap.className = 'param';
-  const th = document.createElement('div'); th.className = 'param-head';
-  th.innerHTML = '<span class="param-name">Master Tempo</span><span class="param-val"></span>';
-  const tslider = document.createElement('input');
-  tslider.type = 'range'; tslider.min = 40; tslider.max = 240; tslider.step = 0.1;
-  tslider.value = readMasterTempo() || 120;
-  th.querySelector('.param-val').textContent = (+tslider.value).toFixed(1) + ' BPM';
-  tslider.addEventListener('input', () => {
-    th.querySelector('.param-val').textContent = (+tslider.value).toFixed(1) + ' BPM';
-    writeMasterTempo(+tslider.value);
-  });
-  tempoWrap.append(th, tslider);
-  grid.append(tempoWrap);
-
-  EF303.GLOBAL.forEach(def => {
-    grid.append(controlFor(def, patch[def.off], v => writeParam(def.off, v)));
-  });
+  const wrap = document.createElement('div');
+  wrap.className = 'param';
+  const head = document.createElement('div'); head.className = 'param-head';
+  head.innerHTML = '<span class="param-name">Master Tempo</span><span class="param-val"></span>';
+  const slider = document.createElement('input');
+  slider.type = 'range'; slider.min = 40; slider.max = 240; slider.step = 0.1;
+  slider.value = readMasterTempo() || 120;
+  const show = () => head.querySelector('.param-val').textContent = (+slider.value).toFixed(1) + ' BPM';
+  show();
+  slider.addEventListener('input', () => { show(); writeMasterTempo(+slider.value); });
+  wrap.append(head, slider);
+  grid.append(wrap);
 }
 
+/* ---- Control knobs: what the physical knobs send over MIDI ---- */
 function renderKnobs() {
-  const grid = $('knobParams');
-  grid.innerHTML = '';
-  EF303.KNOBS.forEach(k => {
-    const card = document.createElement('div');
-    card.className = 'knob-card';
+  const root = $('knobParams');
+  root.innerHTML = '';
+
+  const card = (k, caption) => {
+    const c = document.createElement('div');
+    c.className = 'knob-card';
     const title = document.createElement('h4');
-    title.textContent = k.label;
-    card.append(title);
+    title.textContent = k.label + (caption ? ' · ' + caption : '');
+    c.append(title);
 
     // Assign target: OFF or MFX Param 1-40.
     const assignDef = { type: 'enum', name: 'Target',
       options: ['OFF', ...Array.from({ length: 40 }, (_, i) => 'MFX Prm ' + (i + 1))] };
-    card.append(controlFor(assignDef, patch[k.assignOff], v => writeParam(k.assignOff, v)));
-
+    c.append(controlFor(assignDef, patch[k.assignOff], v => writeParam(k.assignOff, v)));
     // CC number — restricted to the values the unit accepts.
-    const ccDef = EF303._cc(k.ccOff, 'CC Number');
-    card.append(controlFor(ccDef, patch[k.ccOff], v => writeParam(k.ccOff, v)));
+    c.append(paramControl(EF303._cc(k.ccOff, 'CC Number')));
+    // Output routing (INT / EXT / BOTH).
+    c.append(paramControl(EF303._enm(k.modeOff, 'Output', EF303.ENUM.OUTPUT_MODE)));
+    return c;
+  };
 
-    // Output routing.
-    const modeDef = EF303._enm(k.modeOff, 'Output', EF303.ENUM.OUTPUT_MODE);
-    card.append(controlFor(modeDef, patch[k.modeOff], v => writeParam(k.modeOff, v)));
+  // C1-C4 are the four panel knobs; the SysEx map has room for C5-C8 but the
+  // panel exposes no settings for them, so they live behind a disclosure.
+  const panel = EF303.KNOBS.slice(0, 4).map((k, i) => card(k, EF303.PANEL_KNOBS[i].label));
+  root.append(group('Panel knobs C1–C4', panel, 'knob-grid'));
 
-    grid.append(card);
-  });
+  const details = document.createElement('details');
+  details.className = 'extra';
+  const summary = document.createElement('summary');
+  summary.textContent = 'C5–C8 (in the SysEx map, not on the panel)';
+  details.append(summary, group('', EF303.KNOBS.slice(4).map(k => card(k)), 'knob-grid'));
+  root.append(details);
 }
 
+/* ---- Step modulator ---- */
 function renderStepMod() {
   const SM = EF303.STEPMOD;
 
-  // Config controls.
   const cfg = $('smConfig');
   cfg.innerHTML = '';
-  SM.config.forEach(def => {
-    cfg.append(controlFor(def, patch[def.off], v => writeParam(def.off, v)));
-  });
+  cfg.append(group('Playback', SM.playback.map(paramControl)));
+  cfg.append(group('Routing', SM.routing.map(paramControl)));
 
   // 16-step grid.
   const grid = $('stepGrid');
@@ -482,10 +547,10 @@ function renderStepMod() {
 }
 
 function renderAll() {
-  renderEffectParams();
-  renderGlobal();
-  renderKnobs();
+  renderEffectParams();   // also renders the synth section
+  renderTempo();
   renderStepMod();
+  renderKnobs();
 }
 
 /* ============================ Bulk send ============================ */

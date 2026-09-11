@@ -42,32 +42,38 @@
       </div>
     </section>
 
-    <!-- ===================== Multi-FX ===================== -->
+    <!-- ===================== Effect (mirrors the front panel) ===================== -->
     <section class="panel">
-      <h2>Multi-FX <span id="effectBadge" class="badge"></span></h2>
+      <h2>Effect <span id="effectBadge" class="badge"></span></h2>
       <label class="effect-pick">Effect Type
         <select id="effectType"></select>
       </label>
-      <div id="effectParams" class="param-grid"></div>
+      <div id="effectParams"></div>
+    </section>
+
+    <!-- ===================== Synth (Syn+Dly / Syn Bass only) ===================== -->
+    <section class="panel" id="synthSection" hidden>
+      <h2>Synth <span class="badge">🎹 Syn+Dly · Syn Bass</span></h2>
+      <div id="synthParams"></div>
+    </section>
+
+    <!-- ===================== Tempo ===================== -->
+    <section class="panel">
+      <h2>Tempo</h2>
+      <div id="tempoParams" class="param-grid"></div>
     </section>
 
     <!-- ===================== Step Modulator ===================== -->
     <section class="panel">
       <h2>Step Modulator <span class="badge">16-step sequencer</span></h2>
-      <div id="smConfig" class="param-grid"></div>
+      <div id="smConfig"></div>
       <div id="stepGrid" class="step-grid"></div>
     </section>
 
     <!-- ===================== Knob assigns ===================== -->
     <section class="panel">
-      <h2>Control Knobs <span class="badge">C1–C8</span></h2>
-      <div id="knobParams" class="knob-grid"></div>
-    </section>
-
-    <!-- ===================== Global / system ===================== -->
-    <section class="panel">
-      <h2>Global / Sync</h2>
-      <div id="globalParams" class="param-grid"></div>
+      <h2>Control Knobs <span class="badge">MIDI out</span></h2>
+      <div id="knobParams"></div>
     </section>
 
     <!-- ===================== Monitor ===================== -->
