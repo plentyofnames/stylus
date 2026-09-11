@@ -1,0 +1,207 @@
+/* EF-303 Editor — visual theme echoing the Lexicon Reflex Hammer editor. */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #2b1055 0%, #7597de 100%);
+  color: #fff;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+}
+
+h1 {
+  text-align: center;
+  font-size: 2.4em;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+.subtitle { text-align: center; opacity: 0.8; margin: 6px 0 22px; }
+
+.status {
+  text-align: center;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  margin-bottom: 22px;
+  font-weight: 600;
+}
+.status.ok  { background: rgba(46, 204, 113, 0.25); }
+.status.err { background: rgba(231, 76, 60, 0.30); }
+
+.panel {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 22px;
+}
+.panel h2 {
+  font-size: 1.25em;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.badge {
+  font-size: 0.6em;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  letter-spacing: 0.03em;
+}
+
+/* ---- connection ---- */
+.conn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+label { display: flex; flex-direction: column; gap: 5px; font-size: 0.85em; opacity: 0.95; }
+select, input[type="number"] {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: 0.95em;
+}
+select option { background: #2b1055; }
+
+.btn-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
+.btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6a5cff, #00c6ff);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.2s ease;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3); }
+.btn.ghost { background: rgba(255, 255, 255, 0.12); }
+.write-mode { font-size: 0.85em; display: flex; gap: 12px; align-items: center; opacity: 0.9; }
+.write-mode label { flex-direction: row; align-items: center; gap: 5px; }
+
+.effect-pick { max-width: 320px; margin-bottom: 16px; }
+
+/* ---- parameter grids ---- */
+.param-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.param {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 10px;
+  padding: 12px;
+}
+.param-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.param-name { font-size: 0.9em; font-weight: 600; }
+.param-val  { font-size: 0.82em; opacity: 0.85; font-variant-numeric: tabular-nums; }
+.param input[type="range"] { width: 100%; }
+.param select { width: 100%; }
+
+/* ---- range slider styling ---- */
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  height: 6px; border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #00c6ff; cursor: pointer; border: 2px solid #fff;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #00c6ff; cursor: pointer; border: 2px solid #fff;
+}
+
+/* ---- knobs ---- */
+.knob-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.knob-card {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 12px;
+  padding: 14px;
+}
+.knob-card h4 {
+  font-size: 1.05em;
+  margin-bottom: 10px;
+  color: #8be9ff;
+}
+.knob-card .param { background: rgba(0, 0, 0, 0.18); margin-bottom: 8px; }
+
+/* ---- step modulator ---- */
+.step-grid {
+  display: grid;
+  grid-template-columns: repeat(16, minmax(48px, 1fr));
+  gap: 6px;
+  margin-top: 16px;
+  overflow-x: auto;      /* columns have a floor width, so narrow screens scroll */
+}
+.step-col {
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 8px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border-top: 3px solid transparent;
+}
+.step-col[data-status="normal"] { border-top-color: #00c6ff; }
+.step-col[data-status="tie"]    { border-top-color: #f1c40f; }
+.step-col[data-status="slide"]  { border-top-color: #2ecc71; }
+.step-col[data-status="rest"]   { border-top-color: #7f8c8d; opacity: 0.6; }
+.step-num { font-weight: 700; font-size: 0.8em; }
+.step-readout { font-size: 0.72em; opacity: 0.85; font-variant-numeric: tabular-nums; }
+.step-tag { font-size: 0.6em; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
+.step-col select { width: 100%; font-size: 0.7em; padding: 3px; }
+
+/* vertical value sliders in the step grid.
+   Selector must out-rank the generic input[type="range"] rule above, which
+   otherwise forces height: 6px and collapses the slider to a dot. */
+input[type="range"].v-slider {
+  writing-mode: vertical-lr;
+  direction: rtl;          /* min at the bottom, max at the top */
+  width: 6px; height: 90px;
+}
+.step-col input[type="range"]:not(.v-slider) { width: 100%; }
+
+/* ---- monitor ---- */
+.monitor {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  padding: 12px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.72em;
+  line-height: 1.5;
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+footer {
+  text-align: center;
+  font-size: 0.78em;
+  opacity: 0.65;
+  margin-top: 10px;
+  line-height: 1.5;
+}

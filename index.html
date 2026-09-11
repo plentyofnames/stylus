@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EF-303 Editor — Roland Groove Effects</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Roland EF-303 Editor</h1>
+    <p class="subtitle">Web MIDI editor for the EF-303 Groove Effects · SysEx + CC</p>
+
+    <div id="status" class="status">Click “Connect MIDI” to begin.</div>
+
+    <!-- ===================== Connection ===================== -->
+    <section class="panel">
+      <h2>Connection</h2>
+      <div class="conn-grid">
+        <label>Output
+          <select id="midiOutput"><option value="">— select output —</option></select>
+        </label>
+        <label>Input
+          <select id="midiInput"><option value="">— select input —</option></select>
+        </label>
+        <label>MIDI Channel
+          <select id="midiChannel"></select>
+        </label>
+        <label>Device ID
+          <select id="deviceId"></select>
+        </label>
+      </div>
+      <div class="btn-row">
+        <button id="connectBtn" class="btn">Connect MIDI</button>
+        <button id="readBtn" class="btn ghost">⭳ Read patch from EF-303</button>
+        <button id="sendAllBtn" class="btn ghost">⭱ Send whole patch</button>
+        <span class="write-mode">
+          Write via:
+          <label><input type="radio" name="writeMode" value="sysex" checked> SysEx</label>
+          <label><input type="radio" name="writeMode" value="cc"> CC (MODE2)</label>
+        </span>
+      </div>
+    </section>
+
+    <!-- ===================== Multi-FX ===================== -->
+    <section class="panel">
+      <h2>Multi-FX <span id="effectBadge" class="badge"></span></h2>
+      <label class="effect-pick">Effect Type
+        <select id="effectType"></select>
+      </label>
+      <div id="effectParams" class="param-grid"></div>
+    </section>
+
+    <!-- ===================== Step Modulator ===================== -->
+    <section class="panel">
+      <h2>Step Modulator <span class="badge">16-step sequencer</span></h2>
+      <div id="smConfig" class="param-grid"></div>
+      <div id="stepGrid" class="step-grid"></div>
+    </section>
+
+    <!-- ===================== Knob assigns ===================== -->
+    <section class="panel">
+      <h2>Control Knobs <span class="badge">C1–C8</span></h2>
+      <div id="knobParams" class="knob-grid"></div>
+    </section>
+
+    <!-- ===================== Global / system ===================== -->
+    <section class="panel">
+      <h2>Global / Sync</h2>
+      <div id="globalParams" class="param-grid"></div>
+    </section>
+
+    <!-- ===================== Monitor ===================== -->
+    <section class="panel">
+      <h2>MIDI Monitor</h2>
+      <pre id="monitor" class="monitor"></pre>
+    </section>
+
+    <footer>
+      EF-303 MIDI implementation transcribed from the official Roland Owner's
+      Manual (spec v1.00, Jul 26 2000). Edits target the Temporary Patch — use
+      the unit's front-panel STORE to save to a user patch.
+    </footer>
+  </div>
+
+  <script src="ef303-data.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // Populate channel (1-16) and device-ID (0x10-0x1F) selectors.
+    (function () {
+      const ch = document.getElementById('midiChannel');
+      for (let i = 0; i < 16; i++) ch.add(new Option('Ch ' + (i + 1), i));
+      const dev = document.getElementById('deviceId');
+      // Roland shows device IDs 1-based on the panel: 0x10 -> "17".
+      for (let i = 0x10; i <= 0x1f; i++)
+        dev.add(new Option(`${i + 1}  (0x${i.toString(16).toUpperCase()})`, i));
+    })();
+  </script>
+</body>
+</html>
