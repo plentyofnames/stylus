@@ -112,6 +112,14 @@ select option { background: #2b1055; }
 .param input[type="range"] { width: 100%; }
 .param select { width: 100%; }
 
+/* ---- the four panel knobs, always one row in panel order ---- */
+.knob-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+@media (max-width: 760px) { .knob-row { grid-template-columns: repeat(2, 1fr); } }
+
 /* ---- sub-groups inside a panel ---- */
 .group { margin-bottom: 16px; }
 .group:last-child { margin-bottom: 0; }

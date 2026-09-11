@@ -179,6 +179,25 @@ const EF303 = (() => {
         rng(4, 'HH Level'), enm(32, 'Drum Kit', ENUM.DRUM_KIT) ] }
   ];
 
+  // ---- Effects Parameter Chart (p.70) ----------------------------------------
+  // The RATE/LOW knob switches to a different parameter when [BPM SYNC] is on
+  // (the rate then comes from SYNC TYPE), and CUTOFF/MID switches when
+  // [CTRL SEL] is on for some effects. Keyed by effect id; values are patch
+  // offsets, null = the knob does nothing in that state, absent = unchanged.
+  const KNOB_ALT = {
+    0:  { bpmSyncOn: 6 },                 // Filter:     RATE/LOW -> Depth
+    1:  { bpmSyncOn: null },              // Isolator:   RATE/LOW inactive
+    2:  { bpmSyncOn: 3, ctrlSelOn: 7 },   // Flanger:    RATE/LOW -> Depth, CUTOFF/MID -> Delay Time
+    3:  { bpmSyncOn: null },              // Delay+Pan
+    4:  { bpmSyncOn: null },              // Reverb
+    5:  { bpmSyncOn: 6 },                 // Pitch+Dly:  RATE/LOW -> Feedback
+    6:  { bpmSyncOn: null },              // Slicer+Pan
+    9:  { bpmSyncOn: 6 },                 // Ring Mod:   RATE/LOW -> Depth
+    10: { bpmSyncOn: 3, ctrlSelOn: 7 },   // Phaser:     RATE/LOW -> Depth, CUTOFF/MID -> Center Freq
+    13: { bpmSyncOff: null, bpmSyncOn: 6 }, // Syn+Dly:  RATE/LOW is Feedback, only with BPM Sync on
+    14: { bpmSyncOn: null }               // Syn Bass:   RATE/LOW inactive with BPM Sync on
+  };
+
   // ---- Global / system parameters within a patch (pp.73-74) ------------------
   // Master Tempo spans two bytes (H 0x43, L 0x44): tempo = (H*128 + L) / 10,
   // range 40.0-240.0 BPM. Handled specially in app.js.
@@ -243,7 +262,7 @@ const EF303 = (() => {
   };
 
   return { SYSEX, ADDR, ENUM, EFFECTS, GLOBAL, KNOBS, STEPMOD, VALID_CC,
-           SYNTH_GROUPS, SYNTH_OFFSETS, PANEL_KNOBS, CTRL_SELECT, SYNC, KEYBOARD,
+           SYNTH_GROUPS, SYNTH_OFFSETS, PANEL_KNOBS, KNOB_ALT, CTRL_SELECT, SYNC, KEYBOARD,
            // expose builders for any UI-side needs
            _rng: rng, _enm: enm, _cc: ccs };
 })();

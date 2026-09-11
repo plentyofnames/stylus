@@ -128,6 +128,9 @@ function writeParam(offset, value) {
   value &= 0x7f;
   patch[offset] = value;
 
+  // BPM Sync changes what the RATE/LOW knob (and so C1) drives; relabel.
+  if (offset === 0x4b) renderStepModConfig();
+
   const def = paramAtOffset(offset);
   if (writeMode === 'cc' && def && def.cc != null) {
     // Real-time control via Control Change (Receive CC = MODE2).
@@ -391,6 +394,35 @@ function tagControl(node, text) {
   return node;
 }
 
+// Which parameter panel knob C1..C4 (index 0..3) drives for the current
+// effect, following the Effects Parameter Chart (p.70): RATE/LOW depends on
+// the patch's BPM Sync state, CUTOFF/MID may change when [CTRL SEL] is on.
+// Returns the descriptor, or null if the knob is inactive in that state.
+function knobTarget(knobIndex, { ctrlSel = false } = {}) {
+  const eff = EF303.EFFECTS[currentEffectId];
+  const alt = EF303.KNOB_ALT[eff.id] || {};
+  let off = EF303.PANEL_KNOBS[knobIndex].off;
+  if (knobIndex === 0) {
+    const syncOn = patch[0x4b] === 1;
+    if (syncOn && 'bpmSyncOn' in alt) off = alt.bpmSyncOn;
+    if (!syncOn && 'bpmSyncOff' in alt) off = alt.bpmSyncOff;
+  } else if (knobIndex === 1 && ctrlSel && 'ctrlSelOn' in alt) {
+    off = alt.ctrlSelOn;
+  }
+  if (off == null) return null;
+  return eff.params.find(p => p.off === off) || null;
+}
+
+// Caption for a parameter that has no knob of its own: say which knob reaches
+// it and in which state, per the p.70 chart.
+function extraCaption(eff, p) {
+  const alt = EF303.KNOB_ALT[eff.id] || {};
+  if (p.off === 32) return 'FREQ RANGE';
+  if (alt.bpmSyncOn === p.off) return 'RATE/LOW · with BPM Sync on';
+  if (alt.ctrlSelOn === p.off) return 'CUTOFF/MID · with Ctrl Sel on';
+  return 'no panel knob';
+}
+
 /* ---- Effect: laid out like the front panel ---- */
 function renderEffectParams() {
   const eff = EF303.EFFECTS[currentEffectId];
@@ -398,22 +430,22 @@ function renderEffectParams() {
   root.innerHTML = '';
   const byOff = Object.fromEntries(eff.params.map(p => [p.off, p]));
 
-  // The four knobs, in panel order (prm2, prm3, prm4, prm1).
+  // Row 1: the four knobs in panel order (prm2, prm3, prm4, prm1), so Effect
+  // Balance is rightmost like on the unit.
   const knobs = EF303.PANEL_KNOBS
     .filter(k => byOff[k.off])
     .map(k => tagControl(paramControl(byOff[k.off]), k.label));
-  root.append(group('Knobs', knobs));
+  root.append(group('Knobs', knobs, 'knob-row'));
 
-  // Buttons beside the knobs: FREQ RANGE (prm32, or its per-effect stand-in),
-  // SYNC TYPE and BPM SYNC. Plus any extra effect parameter (prm6 / prm7)
-  // that has no knob of its own.
-  const buttonOffs = new Set(EF303.PANEL_KNOBS.map(k => k.off));
-  const extras = eff.params.filter(p => !buttonOffs.has(p.off) && !EF303.SYNTH_OFFSETS.has(p.off));
-  const buttons = [
-    ...extras.map(p => tagControl(paramControl(p), p.off === 32 ? 'FREQ RANGE' : 'extra parameter')),
+  // Row 2: parameters without a knob of their own (prm6 / prm7), then the
+  // buttons beside the knobs: FREQ RANGE (prm32), SYNC TYPE and BPM SYNC.
+  const knobOffs = new Set(EF303.PANEL_KNOBS.map(k => k.off));
+  const extras = eff.params.filter(p => !knobOffs.has(p.off) && !EF303.SYNTH_OFFSETS.has(p.off));
+  const second = [
+    ...extras.map(p => tagControl(paramControl(p), extraCaption(eff, p))),
     ...EF303.SYNC.map(p => tagControl(paramControl(p), p.name.toUpperCase()))
   ];
-  root.append(group('Buttons', buttons));
+  root.append(group('Buttons & extras', second));
 
   $('effectBadge').textContent = (eff.synth ? '🎹 ' : '') + eff.name;
   renderSynth(eff);
@@ -487,15 +519,31 @@ function renderKnobs() {
 }
 
 /* ---- Step modulator ---- */
-function renderStepMod() {
-  const SM = EF303.STEPMOD;
 
+// Destination / Ctrl Select pick a knob (C1..C4); label each with the
+// parameter that knob actually modulates for the current effect.
+function knobChoiceDef(def) {
+  const options = def.options.map((o, i) => {
+    if (i === 0) return o;                                  // OFF
+    const p = knobTarget(i - 1, { ctrlSel: true });
+    const knob = EF303.PANEL_KNOBS[i - 1].label;
+    return `${o} · ${p ? p.name : '(inactive)'}  —  ${knob}`;
+  });
+  return { ...def, options };
+}
+
+function renderStepModConfig() {
+  const SM = EF303.STEPMOD;
   const cfg = $('smConfig');
   cfg.innerHTML = '';
+  const withKnobNames = p => (p.options === EF303.ENUM.SM_DEST || p.options === EF303.ENUM.CTRL_SELECT)
+    ? knobChoiceDef(p) : p;
   cfg.append(group('Playback', SM.playback.map(paramControl)));
-  cfg.append(group('Routing', SM.routing.map(paramControl)));
+  cfg.append(group('Routing', SM.routing.map(p => paramControl(withKnobNames(p)))));
+}
 
-  // 16-step grid.
+function renderStepGrid() {
+  const SM = EF303.STEPMOD;
   const grid = $('stepGrid');
   grid.innerHTML = '';
 
@@ -546,6 +594,11 @@ function renderStepMod() {
   }
 }
 
+function renderStepMod() {
+  renderStepModConfig();
+  renderStepGrid();
+}
+
 function renderAll() {
   renderEffectParams();   // also renders the synth section
   renderTempo();
@@ -577,6 +630,7 @@ function setEffect(id) {
   currentEffectId = id;
   writeEffectType(id);
   renderEffectParams();
+  renderStepModConfig();   // destination labels depend on the effect
 }
 
 function seedDefaults() {
