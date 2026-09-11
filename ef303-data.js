@@ -179,24 +179,43 @@ const EF303 = (() => {
         rng(4, 'HH Level'), enm(32, 'Drum Kit', ENUM.DRUM_KIT) ] }
   ];
 
-  // ---- Effects Parameter Chart (p.70) ----------------------------------------
+  // ---- Knob behaviour that depends on button state (pp.57-66, chart p.70) ---
   // The RATE/LOW knob switches to a different parameter when [BPM SYNC] is on
-  // (the rate then comes from SYNC TYPE), and CUTOFF/MID switches when
-  // [CTRL SEL] is on for some effects. Keyed by effect id; values are patch
-  // offsets, null = the knob does nothing in that state, absent = unchanged.
+  // (the rate then comes from SYNC TYPE), and CUTOFF/MID gets a secondary
+  // function when [CTRL SEL] is on for some effects. Keyed by effect id;
+  // values are patch offsets, null = the knob does nothing in that state,
+  // absent = unchanged. This describes the KNOB only; what the step modulator
+  // can drive is SM_TARGETS below.
   const KNOB_ALT = {
-    0:  { bpmSyncOn: 6 },                 // Filter:     RATE/LOW -> Depth
-    1:  { bpmSyncOn: null },              // Isolator:   RATE/LOW inactive
-    2:  { bpmSyncOn: 3, ctrlSelOn: 7 },   // Flanger:    RATE/LOW -> Depth, CUTOFF/MID -> Delay Time
-    3:  { bpmSyncOn: null },              // Delay+Pan
-    4:  { bpmSyncOn: null },              // Reverb
-    5:  { bpmSyncOn: 6 },                 // Pitch+Dly:  RATE/LOW -> Feedback
-    6:  { bpmSyncOn: null },              // Slicer+Pan
-    9:  { bpmSyncOn: 6 },                 // Ring Mod:   RATE/LOW -> Depth
-    10: { bpmSyncOn: 3, ctrlSelOn: 7 },   // Phaser:     RATE/LOW -> Depth, CUTOFF/MID -> Center Freq
-    13: { bpmSyncOff: null, bpmSyncOn: 6 }, // Syn+Dly:  RATE/LOW is Feedback, only with BPM Sync on
-    14: { bpmSyncOn: null }               // Syn Bass:   RATE/LOW inactive with BPM Sync on
+    0:  { bpmSyncOn: 6 },                   // Filter:     RATE/LOW -> Depth
+    1:  { bpmSyncOff: null, bpmSyncOn: 2 }, // Isolator:   Low only adjustable with BPM Sync on (p.57)
+    2:  { bpmSyncOn: null, ctrlSelOn: 7 },  // Flanger:    RATE/LOW inactive with sync (p.58); CUTOFF/MID -> Delay Time (chart)
+    3:  { bpmSyncOn: null },                // Delay+Pan
+    4:  { bpmSyncOn: null },                // Reverb
+    5:  { bpmSyncOff: null, bpmSyncOn: 6 }, // Pitch+Dly:  RATE/LOW is Feedback, only with BPM Sync on (p.59)
+    6:  { bpmSyncOn: null },                // Slicer+Pan
+    9:  { bpmSyncOn: 6 },                   // Ring Mod:   RATE/LOW -> Depth
+    10: { bpmSyncOn: null, ctrlSelOn: 7 },  // Phaser:     RATE/LOW only valid with sync off (p.62); CUTOFF/MID -> Center Freq
+    13: { bpmSyncOff: null, bpmSyncOn: 6 }, // Syn+Dly:    RATE/LOW is Feedback, only with BPM Sync on (p.64)
+    14: { bpmSyncOn: null }                 // Syn Bass:   RATE/LOW inactive with BPM Sync on (chart)
   };
+
+  // ---- Step modulator targets (each algorithm page's "Step modulator" list) --
+  // For each effect: the patch offset driven when the step modulator's
+  // destination is C1..C4 (index 0..3), null = that knob can't be sequenced.
+  // Most effects allow only CUTOFF/MID, RESO/HIGH and EFFECT BALANCE.
+  const SM_DEFAULT = [null, 3, 4, 1];
+  const SM_TARGETS = {
+    1:  [2, 3, 4, 1],       // Isolator: Low / Mid / High / Balance
+    7:  [2, 3, 4, 1],       // Comp: Attack / Release / Threshold / Balance
+    8:  [2, 3, 4, 1],       // Lo-fi: Drive / Sample Rate / Bit Resolution / Balance
+    10: [null, 7, 4, 1]     // Phaser: C2 sequences Center Freq, not Depth (p.62)
+  };
+  // What the sequence drives when the destination is OFF (synth algorithms).
+  const SM_OFF_LABEL = {
+    13: 'Pitch (note)', 14: 'Pitch (note)', 15: 'Drum select'
+  };
+  const smTargets = (effectId) => SM_TARGETS[effectId] || SM_DEFAULT;
 
   // ---- Global / system parameters within a patch (pp.73-74) ------------------
   // Master Tempo spans two bytes (H 0x43, L 0x44): tempo = (H*128 + L) / 10,
@@ -262,7 +281,8 @@ const EF303 = (() => {
   };
 
   return { SYSEX, ADDR, ENUM, EFFECTS, GLOBAL, KNOBS, STEPMOD, VALID_CC,
-           SYNTH_GROUPS, SYNTH_OFFSETS, PANEL_KNOBS, KNOB_ALT, CTRL_SELECT, SYNC, KEYBOARD,
+           SYNTH_GROUPS, SYNTH_OFFSETS, PANEL_KNOBS, KNOB_ALT, smTargets, SM_OFF_LABEL,
+           CTRL_SELECT, SYNC, KEYBOARD,
            // expose builders for any UI-side needs
            _rng: rng, _enm: enm, _cc: ccs };
 })();

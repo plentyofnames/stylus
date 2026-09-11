@@ -128,9 +128,6 @@ function writeParam(offset, value) {
   value &= 0x7f;
   patch[offset] = value;
 
-  // BPM Sync changes what the RATE/LOW knob (and so C1) drives; relabel.
-  if (offset === 0x4b) renderStepModConfig();
-
   const def = paramAtOffset(offset);
   if (writeMode === 'cc' && def && def.cc != null) {
     // Real-time control via Control Change (Receive CC = MODE2).
@@ -394,21 +391,12 @@ function tagControl(node, text) {
   return node;
 }
 
-// Which parameter panel knob C1..C4 (index 0..3) drives for the current
-// effect, following the Effects Parameter Chart (p.70): RATE/LOW depends on
-// the patch's BPM Sync state, CUTOFF/MID may change when [CTRL SEL] is on.
-// Returns the descriptor, or null if the knob is inactive in that state.
-function knobTarget(knobIndex, { ctrlSel = false } = {}) {
+// The parameter the step modulator drives for the current effect when its
+// destination is knob C1..C4 (index 0..3), from each algorithm page's
+// "Step modulator" list. null = that knob can't be sequenced for this effect.
+function smTarget(knobIndex) {
   const eff = EF303.EFFECTS[currentEffectId];
-  const alt = EF303.KNOB_ALT[eff.id] || {};
-  let off = EF303.PANEL_KNOBS[knobIndex].off;
-  if (knobIndex === 0) {
-    const syncOn = patch[0x4b] === 1;
-    if (syncOn && 'bpmSyncOn' in alt) off = alt.bpmSyncOn;
-    if (!syncOn && 'bpmSyncOff' in alt) off = alt.bpmSyncOff;
-  } else if (knobIndex === 1 && ctrlSel && 'ctrlSelOn' in alt) {
-    off = alt.ctrlSelOn;
-  }
+  const off = EF303.smTargets(eff.id)[knobIndex];
   if (off == null) return null;
   return eff.params.find(p => p.off === off) || null;
 }
@@ -419,7 +407,7 @@ function extraCaption(eff, p) {
   const alt = EF303.KNOB_ALT[eff.id] || {};
   if (p.off === 32) return 'FREQ RANGE';
   if (alt.bpmSyncOn === p.off) return 'RATE/LOW · with BPM Sync on';
-  if (alt.ctrlSelOn === p.off) return 'CUTOFF/MID · with Ctrl Sel on';
+  if (alt.ctrlSelOn === p.off) return 'CUTOFF/MID · with Ctrl Sel on (per chart p.70)';
   return 'no panel knob';
 }
 
@@ -521,13 +509,14 @@ function renderKnobs() {
 /* ---- Step modulator ---- */
 
 // Destination / Ctrl Select pick a knob (C1..C4); label each with the
-// parameter that knob actually modulates for the current effect.
+// parameter the step modulator actually drives for the current effect.
 function knobChoiceDef(def) {
+  const offLabel = EF303.SM_OFF_LABEL[currentEffectId];
   const options = def.options.map((o, i) => {
-    if (i === 0) return o;                                  // OFF
-    const p = knobTarget(i - 1, { ctrlSel: true });
+    if (i === 0) return offLabel ? `${o} · ${offLabel}` : o;
+    const p = smTarget(i - 1);
     const knob = EF303.PANEL_KNOBS[i - 1].label;
-    return `${o} · ${p ? p.name : '(inactive)'}  —  ${knob}`;
+    return `${o} · ${p ? p.name : '(not sequenceable)'}  —  ${knob}`;
   });
   return { ...def, options };
 }
